@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+from bs4 import BeautifulSoup
+import re
+from odtfile import OdtFile
+from unidecode import unidecode
+from pathlib import Path
+import pickle
+
+
+def correct_tree(odt_content, style_name, tag_name):
+    nodes_list = odt_content.find_all('style:style',
+                                      {'style:parent-style-name': style_name})
+    list_of_node_number_styles = []
+
+    for node in nodes_list:
+        if node['style:name'] not in list_of_node_number_styles:
+            list_of_node_number_styles.append(node['style:name'])
+
+    for number_style in list_of_node_number_styles:
+        nodes_list = odt_content.find_all(tag_name,
+                                          {'text:style-name': number_style})
+        for node in nodes_list:
+            element = odt_content.find(
+                tag_name, {'text:style-name': number_style})
+            element['text:style-name'] = style_name
+
+
+
+def gather_journal_info(file_name):
+
+    file = OdtFile(file_name)
+
+    odt_content = BeautifulSoup(file.get_content_file_unicode(), 'lxml-xml')
+
+    # odt_styles = BeautifulSoup(file.get_styles_file_unicode(), 'lxml-xml')
+
+    journal_info = {}  # Global dictionary of journal data
+
+    get_journal_through_issue_number(odt_content, journal_info)
+    get_journal_titles(odt_content, journal_info)
+    get_article_names_from_title(odt_content, journal_info)
+    get_info_from_citation_par(odt_content, journal_info)
+    get_article_abstract_html(odt_content, journal_info)
+    get_article_rubric(odt_content, journal_info)
+    get_article_keywords(odt_content, journal_info)
+
+    return(journal_info)
